@@ -1,0 +1,37 @@
+import { env } from 'process';
+
+export const validateEnvironment = () => {
+  const required = ['JWT_SECRET', 'MONGODB_URI', 'TMDB_API_KEY', 'TRAKT_CLIENT_ID'];
+  const missing = required.filter(envVar => !env[envVar]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+  
+  if (env.NODE_ENV === 'production' && env.JWT_SECRET === 'accessTokenSecret') {
+    throw new Error('Default JWT secret detected in production');
+  }
+  
+  // Validate API keys are not empty
+  if (env.TMDB_API_KEY && env.TMDB_API_KEY.trim() === '') {
+    throw new Error('TMDB_API_KEY is empty');
+  }
+  
+  if (env.TRAKT_CLIENT_ID && env.TRAKT_CLIENT_ID.trim() === '') {
+    throw new Error('TRAKT_CLIENT_ID is empty');
+  }
+};
+
+// TMDB API Configuration
+export const TMDB_API_URL = env.TMDB_API_URL || 'https://api.themoviedb.org/3';
+export const TMDB_API_KEY = env.TMDB_API_KEY || '';
+
+// Trakt API Configuration
+export const TRAKT_API_URL = env.TRAKT_API_URL || 'https://api.trakt.tv';
+export const TRAKT_CLIENT_ID = env.TRAKT_CLIENT_ID || '';
+export const TRAKT_CLIENT_SECRET = env.TRAKT_CLIENT_SECRET || '';
+
+// Create a function to get environment variables (for services that need them)
+export const getEnv = (key: string) => {
+  return env[key];
+};
