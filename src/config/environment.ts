@@ -31,6 +31,11 @@ export const TRAKT_API_URL = env.TRAKT_API_URL || 'https://api.trakt.tv';
 export const TRAKT_CLIENT_ID = env.TRAKT_CLIENT_ID || '';
 export const TRAKT_CLIENT_SECRET = env.TRAKT_CLIENT_SECRET || '';
 
+// Railway-specific configurations
+export const RAILWAY_DOMAIN = env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000';
+export const NODE_ENV = env.NODE_ENV || 'production';
+export const PORT = env.PORT || 3000;
+
 // Create a function to get environment variables (for services that need them)
 export const getEnv = (key: string) => {
   return env[key];

@@ -35,7 +35,7 @@ fastify.register(require('@fastify/jwt'), {
 // Enable CORS for frontend interaction
 fastify.register(cors, {
   origin: process.env.NODE_ENV === 'production'
-    ? (process.env.CORS_ORIGIN?.split(',') || ['https://your-frontend-domain.com'])
+    ? (process.env.CORS_ORIGIN?.split(',').filter(Boolean) || [process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000'])
     : true,
   credentials: process.env.CORS_CREDENTIALS === 'true',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -112,8 +112,8 @@ fastify.register(require('@fastify/swagger'), {
       description: process.env.SWAGGER_DESCRIPTION || 'API for Movie Streaming Backend',
       version: process.env.SWAGGER_VERSION || '1.0.0',
     },
-    host: process.env.SWAGGER_HOST || 'localhost:3000',
-    schemes: ['http'],
+    host: process.env.SWAGGER_HOST || process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000',
+    schemes: ['https', 'http'],
     consumes: ['application/json'],
     produces: ['application/json'],
   },
