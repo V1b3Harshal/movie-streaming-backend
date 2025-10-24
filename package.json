@@ -20,13 +20,14 @@
 		"typescript": "^5.9.3"
 	},
 	"scripts": {
-		"dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-		"start": "node dist/server.js",
-		"build": "tsc",
-		"test": "jest",
-		"test:watch": "jest --watch",
-		"lint": "eslint src/**/*.ts",
-		"lint:fix": "eslint src/**/*.ts --fix"
+	  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+	  "start": "node dist/server.js",
+	  "build": "tsc",
+	  "build:prod": "npm run build",
+	  "test": "jest",
+	  "test:watch": "jest --watch",
+	  "lint": "eslint src/**/*.ts",
+	  "lint:fix": "eslint src/**/*.ts --fix"
 	},
 	"devDependencies": {
 		"@types/bcrypt": "^6.0.0",
