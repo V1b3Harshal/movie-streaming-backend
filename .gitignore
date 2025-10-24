@@ -118,4 +118,4 @@ temp/
 
 # If you want to keep lock files, uncomment the appropriate line above
 # and remove this line
-pnpm-lock.yaml
+pnpm-lock.yaml"package-lock.json"  
