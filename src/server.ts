@@ -160,8 +160,8 @@ const start = async () => {
     }
     
     // Then start the server
-    await fastify.listen({ port: 3000 });
-    console.log('Server listening on http://localhost:3000');
+    await fastify.listen({ port: 3000, host: '0.0.0.0' });
+    console.log('Server listening on http://0.0.0.0:3000');
   } catch (err) {
     logErrorWithDetails(err, { context: 'Server startup' });
     fastify.log.error('Failed to start server');
