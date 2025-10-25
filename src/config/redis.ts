@@ -1,27 +1,21 @@
-import { createClient } from 'redis';
+import { Redis } from '@upstash/redis';
 import { env } from 'process';
 
-let redisClient: any = null;
+let redisClient: Redis | null = null;
 
 export const connectToRedis = async () => {
   try {
-    redisClient = createClient({
-      url: env.REDIS_URL || 'redis://localhost:6379',
-      password: env.REDIS_PASSWORD,
+    redisClient = new Redis({
+      url: env.UPSTASH_REDIS_REST_URL || '',
+      token: env.UPSTASH_REDIS_REST_TOKEN || '',
     });
 
-    redisClient.on('error', (err: any) => {
-      console.error('Redis Client Error:', err);
-    });
-
-    redisClient.on('connect', () => {
-      console.log('Connected to Redis successfully');
-    });
-
-    await redisClient.connect();
+    // Test the connection
+    await redisClient.ping();
+    console.log('Connected to Upstash Redis successfully');
     return redisClient;
   } catch (error) {
-    console.error('Redis connection error:', error);
+    console.error('Upstash Redis connection error:', error);
     throw error;
   }
 };
@@ -34,10 +28,9 @@ export const getRedisClient = () => {
 };
 
 export const disconnectFromRedis = async () => {
-  if (redisClient) {
-    await redisClient.quit();
-    console.log('Disconnected from Redis');
-  }
+  // Upstash Redis doesn't require explicit disconnection
+  // as it uses HTTP REST API
+  console.log('Upstash Redis connection managed automatically');
 };
 
 // Redis key prefixes for better organization
@@ -53,21 +46,25 @@ export const setRefreshToken = async (token: string, userId: string, email: stri
   const client = getRedisClient();
   const key = `${RedisKeys.refreshTokens}${token}`;
   
-  await client.hSet(key, {
+  await client.hset(key, {
     userId,
     email,
     expiresAt: expiresAt.toString(),
   });
   
-  await client.expireAt(key, expiresAt);
+  // Set TTL in seconds
+  const ttl = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+  if (ttl > 0) {
+    await client.expire(key, ttl);
+  }
 };
 
 export const getRefreshToken = async (token: string) => {
   const client = getRedisClient();
   const key = `${RedisKeys.refreshTokens}${token}`;
   
-  const result = await client.hGetAll(key);
-  return Object.keys(result).length > 0 ? result : null;
+  const result = await client.hgetall(key);
+  return result !== null && Object.keys(result).length > 0 ? result : null;
 };
 
 export const removeRefreshToken = async (token: string) => {
@@ -86,18 +83,9 @@ export const isRefreshTokenValid = async (token: string) => {
 };
 
 export const cleanupExpiredTokens = async () => {
-  const client = getRedisClient();
-  const pattern = `${RedisKeys.refreshTokens}*`;
-  
-  try {
-    const keys = await client.keys(pattern);
-    if (keys.length > 0) {
-      await client.del(keys);
-      console.log(`Cleaned up ${keys.length} expired refresh tokens`);
-    }
-  } catch (error) {
-    console.error('Error cleaning up expired tokens:', error);
-  }
+  // Upstash Redis doesn't support KEYS command for performance reasons
+  // This function is kept for compatibility but won't work with Upstash
+  console.log('Token cleanup not supported with Upstash Redis - use TTL instead');
 };
 
 // Rate limiting functions
@@ -106,15 +94,20 @@ export const incrementRateLimit = async (key: string, windowMs: number) => {
   const now = Date.now();
   const windowStart = now - windowMs;
   
-  await client.zRemRangeByScore(key, 0, windowStart);
-  await client.zAdd(key, [{ score: now, value: now.toString() }]);
+  // Use ZREMRANGEBYSCORE equivalent
+  await client.zremrangebyscore(key, 0, windowStart);
+  
+  // Use ZADD equivalent
+  await client.zadd(key, { score: now, member: now.toString() });
+  
+  // Set TTL
   await client.expire(key, Math.ceil(windowMs / 1000));
   
-  const currentCount = await client.zCard(key);
+  const currentCount = await client.zcard(key);
   return currentCount;
 };
 
 export const getRateLimitCount = async (key: string) => {
   const client = getRedisClient();
-  return await client.zCard(key);
+  return await client.zcard(key);
 };
