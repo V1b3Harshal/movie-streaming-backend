@@ -36,6 +36,10 @@ export const RAILWAY_DOMAIN = env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000';
 export const NODE_ENV = env.NODE_ENV || 'production';
 export const PORT = env.PORT || 3000;
 
+// Providers Backend Configuration
+export const PROVIDERS_BACKEND_URL = env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
+export const INTERNAL_API_KEY = env.INTERNAL_API_KEY || 'your-secure-internal-api-key-here';
+
 // Create a function to get environment variables (for services that need them)
 export const getEnv = (key: string) => {
   return env[key];

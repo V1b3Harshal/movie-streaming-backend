@@ -5,6 +5,7 @@ import moviesRoutes from './routes/movies';
 import tvSeriesRoutes from './routes/tvSeries';
 import authRoutes from './routes/auth';
 import traktRoutes from './routes/trakt';
+import providersRoutes from './routes/providers';
 import '@fastify/jwt';
 import dotenv from 'dotenv';
 import { connectToDatabase } from './config/database';
@@ -139,6 +140,7 @@ fastify.register(authRoutes, { prefix: '/auth' });
 fastify.register(moviesRoutes, { prefix: '/movies' });
 fastify.register(tvSeriesRoutes, { prefix: '/tv-series' });
 fastify.register(traktRoutes, { prefix: '/trakt' });
+fastify.register(providersRoutes, { prefix: '/providers' });
 
 const start = async () => {
   try {
