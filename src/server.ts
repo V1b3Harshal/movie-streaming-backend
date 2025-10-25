@@ -11,6 +11,7 @@ import dotenv from 'dotenv';
 import { connectToDatabase } from './config/database';
 import { validateEnvironment } from './config/environment';
 import { createSafeErrorResponse, logErrorWithDetails } from './utils/errorHandler';
+import { logger } from './utils/logger';
 
 // Optional Redis import (only if Redis is configured)
 let redisModule: any = null;
@@ -191,7 +192,7 @@ fastify.setNotFoundHandler((request, reply) => {
 
 // Add security-focused request logging
 fastify.addHook('onRequest', (request, reply, done) => {
-  fastify.log.info({
+  logger.http({
     method: request.method,
     url: request.url,
     ip: request.ip,

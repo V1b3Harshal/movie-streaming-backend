@@ -8,8 +8,8 @@ export const validateEnvironment = () => {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
   
-  if (env.NODE_ENV === 'production' && env.JWT_SECRET === 'accessTokenSecret') {
-    throw new Error('Default JWT secret detected in production');
+  if (env.NODE_ENV === 'production' && (env.JWT_SECRET === 'accessTokenSecret' || (env.JWT_SECRET && env.JWT_SECRET.length < 32))) {
+    throw new Error('Weak or default JWT secret detected in production. JWT_SECRET must be at least 32 characters long');
   }
   
   // Validate API keys are not empty
@@ -38,7 +38,7 @@ export const PORT = env.PORT || 3000;
 
 // Providers Backend Configuration
 export const PROVIDERS_BACKEND_URL = env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
-export const INTERNAL_API_KEY = env.INTERNAL_API_KEY || 'your-secure-internal-api-key-here';
+export const INTERNAL_API_KEY = env.INTERNAL_API_KEY || crypto.randomUUID();
 
 // Create a function to get environment variables (for services that need them)
 export const getEnv = (key: string) => {
