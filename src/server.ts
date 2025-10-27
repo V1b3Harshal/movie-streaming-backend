@@ -6,6 +6,7 @@ import tvSeriesRoutes from './routes/tvSeries';
 import authRoutes from './routes/auth';
 import traktRoutes from './routes/trakt';
 import providersRoutes from './routes/providers';
+import watchTogetherRoutes from './routes/watchTogether';
 import '@fastify/jwt';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
@@ -27,6 +28,7 @@ import { connectToDatabase } from './config/database';
 import { validateEnvironment } from './config/environment';
 import { createSafeErrorResponse, logErrorWithDetails } from './utils/errorHandler';
 import { logger } from './utils/logger';
+import { WebSocketService } from './services/webSocketService';
 
 // Optional Redis import (only if Redis is configured)
 let redisModule: any = null;
@@ -164,6 +166,7 @@ fastify.register(moviesRoutes, { prefix: '/movies' });
 fastify.register(tvSeriesRoutes, { prefix: '/tv-series' });
 fastify.register(traktRoutes, { prefix: '/trakt' });
 fastify.register(providersRoutes, { prefix: '/providers' });
+fastify.register(watchTogetherRoutes, { prefix: '/watch-together' });
 
 const start = async () => {
   try {
@@ -183,6 +186,15 @@ const start = async () => {
     } else {
       console.log('Redis not configured, using in-memory refresh token storage');
     }
+    
+    // Initialize WebSocket service
+    const wsService = new WebSocketService(fastify.server);
+    console.log('WebSocket service initialized');
+    
+    // Start WebSocket cleanup interval
+    setInterval(() => {
+      wsService.cleanup();
+    }, 60 * 60 * 1000); // Run every hour
     
     // Then start the server
     await fastify.listen({ port: 3000, host: '0.0.0.0' });
