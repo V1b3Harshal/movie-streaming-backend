@@ -8,6 +8,21 @@ import traktRoutes from './routes/trakt';
 import providersRoutes from './routes/providers';
 import '@fastify/jwt';
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// Explicitly load .env file
+const envPath = process.cwd() + '/.env';
+try {
+  const envConfig = dotenv.parse(readFileSync(envPath));
+  for (const k in envConfig) {
+    process.env[k] = envConfig[k];
+  }
+  console.log('Successfully loaded .env file from:', envPath);
+  console.log('INTERNAL_API_KEY after loading:', process.env.INTERNAL_API_KEY ? process.env.INTERNAL_API_KEY.substring(0, 10) + '...' : 'undefined');
+} catch (error) {
+  console.warn('Could not load .env file, using environment variables');
+}
 import { connectToDatabase } from './config/database';
 import { validateEnvironment } from './config/environment';
 import { createSafeErrorResponse, logErrorWithDetails } from './utils/errorHandler';
@@ -21,8 +36,6 @@ try {
   console.warn('Redis module not found. Refresh token storage will use in-memory fallback.');
 }
 
-// Load environment variables
-dotenv.config();
 
 // Validate environment variables
 validateEnvironment();
@@ -130,6 +143,15 @@ fastify.register(require('@fastify/swagger-ui'), {
   },
   staticCSP: true,
   transformStaticCSP: (header: any) => header,
+});
+
+// Health check endpoint
+fastify.get('/health', async () => {
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'movie-streaming-backend'
+  };
 });
 
 fastify.get('/', async () => {

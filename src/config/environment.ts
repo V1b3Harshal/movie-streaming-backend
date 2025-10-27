@@ -38,7 +38,7 @@ export const PORT = env.PORT || 3000;
 
 // Providers Backend Configuration
 export const PROVIDERS_BACKEND_URL = env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
-export const INTERNAL_API_KEY = env.INTERNAL_API_KEY || crypto.randomUUID();
+export const INTERNAL_API_KEY = env.INTERNAL_API_KEY || '';
 
 // Create a function to get environment variables (for services that need them)
 export const getEnv = (key: string) => {

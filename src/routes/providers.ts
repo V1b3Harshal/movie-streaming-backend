@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import axios from 'axios';
-import { authenticate } from '../middleware/auth';
+import { internalAuth } from '../middleware/internalAuth';
 import { sanitizeId } from '../utils/sanitizer';
 import { createSafeErrorResponse, logErrorWithDetails } from '../utils/errorHandler';
 
@@ -12,7 +12,7 @@ interface ProviderEmbedResponse {
 
 const providersRoutes: FastifyPluginAsync = async (fastify) => {
   // Get provider embed URL
-  fastify.get('/providers/:provider/:id', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/:provider/:id', { preHandler: [internalAuth] }, async (request, reply) => {
     try {
       const { provider, id } = request.params as { provider: string; id: string };
       
@@ -32,7 +32,7 @@ const providersRoutes: FastifyPluginAsync = async (fastify) => {
       // Call the Providers Backend API
       const providersBackendUrl = process.env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
       const response = await axios.get<ProviderEmbedResponse>(
-        `${providersBackendUrl}/providers/${provider}/${sanitizedId}`,
+        `${providersBackendUrl}/${provider}/${sanitizedId}`,
         {
           headers: {
             'x-internal-key': process.env.INTERNAL_API_KEY || 'your-secure-internal-api-key-here',
@@ -68,7 +68,7 @@ const providersRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Get supported providers list
-  fastify.get('/providers/list', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/list', { preHandler: [internalAuth] }, async (request, reply) => {
     try {
       // Call the Providers Backend API
       const providersBackendUrl = process.env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
@@ -103,7 +103,7 @@ const providersRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Check provider status
-  fastify.get('/providers/status/:provider', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/status/:provider', { preHandler: [internalAuth] }, async (request, reply) => {
     try {
       const { provider } = request.params as { provider: string };
       
@@ -114,7 +114,7 @@ const providersRoutes: FastifyPluginAsync = async (fastify) => {
       // Call the Providers Backend API
       const providersBackendUrl = process.env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
       const response = await axios.get(
-        `${providersBackendUrl}/providers/status/${provider}`,
+        `${providersBackendUrl}/status/${provider}`,
         {
           headers: {
             'x-internal-key': process.env.INTERNAL_API_KEY || 'your-secure-internal-api-key-here',
