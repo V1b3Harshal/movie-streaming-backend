@@ -28,7 +28,6 @@ import { connectToDatabase } from './config/database';
 import { validateEnvironment } from './config/environment';
 import { createSafeErrorResponse, logErrorWithDetails } from './utils/errorHandler';
 import { logger } from './utils/logger';
-import { WebSocketService } from './services/webSocketService';
 
 // Optional Redis import (only if Redis is configured)
 let redisModule: any = null;
@@ -41,6 +40,35 @@ try {
 
 // Validate environment variables
 validateEnvironment();
+
+// Validate backend integration configuration
+function validateBackendIntegration() {
+  const required = ['PROVIDERS_BACKEND_URL', 'INTERNAL_API_KEY'];
+  const missing = required.filter(env => !process.env[env]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required backend integration variables: ${missing.join(', ')}`);
+  }
+  
+  // Validate URL format
+  try {
+    new URL(process.env.PROVIDERS_BACKEND_URL!);
+  } catch {
+    throw new Error('Invalid PROVIDERS_BACKEND_URL format');
+  }
+  
+  // Validate internal API key
+  if (!process.env.INTERNAL_API_KEY || process.env.INTERNAL_API_KEY.length < 10) {
+    throw new Error('INTERNAL_API_KEY must be at least 10 characters long');
+  }
+}
+
+try {
+  validateBackendIntegration();
+} catch (error) {
+  console.error('Backend integration validation failed:', error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
 
 const fastify = Fastify({ logger: true });
 
@@ -67,7 +95,7 @@ fastify.register(helmet, {
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.themoviedb.org", "https://api.trakt.tv"],
+      connectSrc: ["'self'", "https://api.themoviedb.org", "https://api.trakt.tv", "ws:", "wss:"],
     },
   },
   hsts: {
@@ -156,6 +184,70 @@ fastify.get('/health', async () => {
   };
 });
 
+// Health check for providers backend with improved error handling
+fastify.get('/health/providers', async () => {
+  try {
+    const { PROVIDERS_BACKEND_URL } = await import('./config/environment');
+    const startTime = Date.now();
+    
+    const response = await fetch(`${PROVIDERS_BACKEND_URL}/health`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-key': process.env.INTERNAL_API_KEY || ''
+      },
+      signal: AbortSignal.timeout(3000) // 3 second timeout
+    });
+    
+    const responseTime = Date.now() - startTime;
+    
+    if (!response.ok) {
+      return {
+        status: 'degraded',
+        timestamp: new Date().toISOString(),
+        service: 'providers-backend',
+        message: 'Providers backend returned error status',
+        statusCode: response.status,
+        responseTime
+      };
+    }
+    
+    const providersHealth = await response.json();
+    return {
+      status: providersHealth.status || 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'providers-backend',
+      responseTime,
+      ...providersHealth
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      service: 'providers-backend',
+      message: 'Failed to connect to providers backend',
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+});
+
+// API configuration endpoint for frontend
+fastify.get('/api/config', async () => {
+  const { PROVIDERS_BACKEND_URL } = await import('./config/environment');
+  
+  return {
+    websocketUrl: process.env.WEBSOCKET_URL || `ws://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3001'}`,
+    providersBackendUrl: PROVIDERS_BACKEND_URL,
+    apiBaseUrl: process.env.RAILWAY_PUBLIC_DOMAIN || `localhost:3000`,
+    features: {
+      watchTogether: true,
+      providers: true,
+      webSocket: true
+    },
+    timestamp: new Date().toISOString()
+  };
+});
+
 fastify.get('/', async () => {
   return { message: 'Welcome to Movie Streaming Backend!' };
 });
@@ -187,18 +279,29 @@ const start = async () => {
       console.log('Redis not configured, using in-memory refresh token storage');
     }
     
-    // Initialize WebSocket service
-    const wsService = new WebSocketService(fastify.server);
-    console.log('WebSocket service initialized');
-    
-    // Start WebSocket cleanup interval
-    setInterval(() => {
-      wsService.cleanup();
-    }, 60 * 60 * 1000); // Run every hour
+    // Check providers backend connection
+    try {
+      const { PROVIDERS_BACKEND_URL } = await import('./config/environment');
+      const response = await fetch(`${PROVIDERS_BACKEND_URL}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        console.log('Providers backend is accessible');
+      } else {
+        console.warn('Providers backend health check failed');
+      }
+    } catch (error) {
+      console.warn('Could not connect to providers backend:', error instanceof Error ? error.message : String(error));
+    }
     
     // Then start the server
     await fastify.listen({ port: 3000, host: '0.0.0.0' });
     console.log('Server listening on http://0.0.0.0:3000');
+    console.log('Watch together functionality available at providers backend');
   } catch (err) {
     logErrorWithDetails(err, { context: 'Server startup' });
     fastify.log.error('Failed to start server');
@@ -235,6 +338,17 @@ fastify.addHook('onRequest', (request, reply, done) => {
     contentType: request.headers['content-type'],
     contentLength: request.headers['content-length'],
   });
+  
+  // Special logging for proxied requests
+  if (request.url.startsWith('/watch-together') || request.url.startsWith('/providers')) {
+    logger.info('Proxy request initiated', {
+      method: request.method,
+      url: request.url,
+      target: process.env.PROVIDERS_BACKEND_URL,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   done();
 });
 
