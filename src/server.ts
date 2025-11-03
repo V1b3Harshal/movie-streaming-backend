@@ -81,10 +81,10 @@ fastify.register(require('@fastify/jwt'), {
 fastify.register(cors, {
   origin: process.env.NODE_ENV === 'production'
     ? (process.env.CORS_ORIGIN?.split(',').filter(Boolean) || [process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000'])
-    : true,
-  credentials: process.env.CORS_CREDENTIALS === 'true',
+    : process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-key'],
 });
 
 // Add comprehensive security headers with Helmet
