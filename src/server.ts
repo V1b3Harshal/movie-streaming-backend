@@ -109,13 +109,12 @@ fastify.register(helmet, {
 });
 
 // Add additional security headers
-fastify.addHook('onRequest', (request, reply, done) => {
+fastify.addHook('onRequest', (request, reply) => {
   reply.header('X-Content-Type-Options', 'nosniff');
   reply.header('X-Frame-Options', 'DENY');
   reply.header('X-XSS-Protection', '1; mode=block');
   reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  done();
 });
 
 // Simple in-memory rate limiting (in production, use Redis)
@@ -123,7 +122,7 @@ declare global {
   var rateLimit: Record<string, number[]>;
 }
 
-fastify.addHook('onRequest', (request, reply, done) => {
+fastify.addHook('onRequest', (request, reply) => {
   const ip = request.ip;
   const now = Date.now();
   
@@ -149,7 +148,6 @@ fastify.addHook('onRequest', (request, reply, done) => {
   
   // Add current request
   global.rateLimit[ip].push(now);
-  done();
 });
 
 // Register Swagger
@@ -382,7 +380,7 @@ fastify.setNotFoundHandler((request, reply) => {
 });
 
 // Add security-focused request logging
-fastify.addHook('onRequest', (request, reply, done) => {
+fastify.addHook('onRequest', (request, reply) => {
   logger.http({
     method: request.method,
     url: request.url,
@@ -402,8 +400,6 @@ fastify.addHook('onRequest', (request, reply, done) => {
       timestamp: new Date().toISOString()
     });
   }
-  
-  done();
 });
 
 start();

@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
-export const internalAuth = (request: FastifyRequest, reply: FastifyReply, done: () => void) => {
+export const internalAuth = (request: FastifyRequest, reply: FastifyReply) => {
   const apiKey = request.headers['x-internal-key'];
   const expectedApiKey = process.env.INTERNAL_API_KEY;
 
@@ -21,6 +21,4 @@ export const internalAuth = (request: FastifyRequest, reply: FastifyReply, done:
     });
     return;
   }
-
-  done();
 };

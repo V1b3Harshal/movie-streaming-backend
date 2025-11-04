@@ -21,15 +21,15 @@ export const removeCSRFToken = (userId: string): void => {
   csrfTokenStore.delete(userId);
 };
 
-export const csrfProtection = async (request: FastifyRequest, reply: FastifyReply, done: () => void) => {
+export const csrfProtection = async (request: FastifyRequest, reply: FastifyReply) => {
   // Skip CSRF protection for safe methods
   if (['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(request.method)) {
-    return done();
+    return;
   }
 
   // Skip CSRF protection for API paths that don't require it
   if (request.url.startsWith('/auth/') || request.url.startsWith('/health') || request.url.startsWith('/docs')) {
-    return done();
+    return;
   }
 
   // Check for CSRF token in header
@@ -41,8 +41,6 @@ export const csrfProtection = async (request: FastifyRequest, reply: FastifyRepl
   if (!csrfToken || !validateCSRFToken(userId, csrfToken as string)) {
     return reply.code(403).send({ error: 'Invalid CSRF token' });
   }
-
-  done();
 };
 
 export const addCSRFToken = (request: FastifyRequest, reply: FastifyReply) => {
