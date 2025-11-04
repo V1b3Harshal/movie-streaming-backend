@@ -20,6 +20,7 @@ export interface LoginInput {
 
 export interface AuthResponse {
   user: Omit<User, 'password'>;
+  sessionId: string;
   accessToken: string;
   refreshToken: string;
 }

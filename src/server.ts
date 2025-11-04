@@ -11,6 +11,9 @@ import '@fastify/jwt';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { csrfProtection, addCSRFToken } from './middleware/csrf';
+import { getSecurityStatus } from './config/environment';
+import { getDatabaseStatus } from './config/database';
 
 // Explicitly load .env file
 const envPath = process.cwd() + '/.env';
@@ -84,7 +87,7 @@ fastify.register(cors, {
     : process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-key', 'x-csrf-token'],
 });
 
 // Add comprehensive security headers with Helmet
@@ -181,6 +184,57 @@ fastify.get('/health', async () => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'movie-streaming-backend'
+  };
+});
+
+// Security status endpoint
+fastify.get('/security/status', async () => {
+  const securityStatus = getSecurityStatus();
+  const databaseStatus = getDatabaseStatus();
+  
+  return {
+    timestamp: new Date().toISOString(),
+    security: {
+      ...securityStatus,
+      csrfProtectionEnabled: process.env.CSRF_PROTECTION_ENABLED === 'true',
+      sslEnforcementEnabled: process.env.SSL_ENFORCEMENT_ENABLED !== 'false',
+      sessionManagement: {
+        timeout: securityStatus.sessionTimeout,
+        rotationInterval: securityStatus.tokenRotationInterval,
+        maxRotations: process.env.MAX_TOKEN_ROTATIONS || '5'
+      }
+    },
+    database: databaseStatus,
+    environment: {
+      nodeEnv: process.env.NODE_ENV || 'development',
+      isProduction: process.env.NODE_ENV === 'production'
+    }
+  };
+});
+
+// CSRF token endpoint
+fastify.get('/csrf-token', {
+  preHandler: [csrfProtection]
+}, async (request, reply) => {
+  addCSRFToken(request, reply);
+  return {
+    csrfToken: reply.getHeader('X-CSRF-Token'),
+    timestamp: new Date().toISOString()
+  };
+});
+
+// Security headers endpoint
+fastify.get('/security/headers', async () => {
+  return {
+    timestamp: new Date().toISOString(),
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
+    }
   };
 });
 

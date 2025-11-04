@@ -1,6 +1,8 @@
 export interface JWTPayload {
   userId: string;
   email: string;
+  sessionId?: string;
+  jti?: string;
   iat?: number;
   exp?: number;
 }
@@ -8,6 +10,7 @@ export interface JWTPayload {
 export interface RefreshTokenPayload {
   userId: string;
   email: string;
+  sessionId?: string;
   jti?: string; // JWT ID for token revocation
   iat?: number;
   exp?: number;
