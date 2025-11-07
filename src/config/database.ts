@@ -34,9 +34,9 @@ console.log('MongoDB URI (masked):', finalMongoUri.replace(/\/\/[^@]+@/, '//***:
 
 const client = new MongoClient(finalMongoUri, {
   maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 30000,
-  connectTimeoutMS: 10000,
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 15000,
   retryWrites: true,
   retryReads: true
 });
