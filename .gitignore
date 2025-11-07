@@ -12,6 +12,7 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.railway
 
 # Logs
 logs/
@@ -118,4 +119,5 @@ temp/
 
 # If you want to keep lock files, uncomment the appropriate line above
 # and remove this line
-pnpm-lock.yaml"package-lock.json"  
+package-lock.json
+pnpm-lock.yaml

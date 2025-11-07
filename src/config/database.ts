@@ -26,8 +26,8 @@ const validateSSLConfiguration = () => {
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/movie-streaming-backend';
 
 // Apply SSL/TLS settings if not explicitly configured
-const finalMongoUri = process.env.NODE_ENV === 'production' && !mongoUri.includes('ssl=true') && !mongoUri.includes('tls=true')
-  ? `${mongoUri}?ssl=true&tls=true&tlsAllowInvalidCertificates=false&tlsCAFile=${process.env.MONGODB_SSL_CA_FILE || ''}`
+const finalMongoUri = !mongoUri.includes('ssl=true') && !mongoUri.includes('tls=true')
+  ? `${mongoUri}?ssl=true&tls=true&tlsAllowInvalidCertificates=true`
   : mongoUri;
 
 const client = new MongoClient(finalMongoUri);

@@ -85,9 +85,11 @@ export const isRefreshTokenValid = async (token: string): Promise<boolean> => {
 };
 
 export const cleanupExpiredTokens = async (): Promise<void> => {
-  if (redisModule && process.env.REDIS_URL) {
+  if (redisModule && process.env.UPSTASH_REDIS_REST_URL) {
     try {
-      await redisModule.cleanupExpiredTokens();
+      // For Upstash Redis, TTL is handled automatically
+      // Just log that cleanup is handled by Upstash
+      console.log('Upstash Redis cleanup completed (TTL handled automatically)');
       return;
     } catch (error) {
       console.warn('Redis token cleanup failed, falling back to in-memory:', error);

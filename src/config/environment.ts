@@ -68,6 +68,14 @@ export const MONGODB_SSL_CA_FILE = env.MONGODB_SSL_CA_FILE || '';
 export const MONGODB_SSL_CERT_FILE = env.MONGODB_SSL_CERT_FILE || '';
 export const MONGODB_SSL_KEY_FILE = env.MONGODB_SSL_KEY_FILE || '';
 
+// Redis Configuration
+export const REDIS_URL = env.REDIS_URL || 'redis://localhost:6379';
+export const REDIS_PASSWORD = env.REDIS_PASSWORD;
+
+// Upstash Redis Configuration
+export const UPSTASH_REDIS_URL = env.UPSTASH_REDIS_URL || env.REDIS_URL;
+export const UPSTASH_REDIS_TOKEN = env.UPSTASH_REDIS_TOKEN;
+
 // Create a function to get environment variables (for services that need them)
 export const getEnv = (key: string) => {
   return env[key];
