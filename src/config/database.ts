@@ -27,24 +27,56 @@ const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/movie-str
 
 // Apply SSL/TLS settings if not explicitly configured
 const finalMongoUri = !mongoUri.includes('ssl=true') && !mongoUri.includes('tls=true')
-  ? `${mongoUri}?ssl=true&tls=true&tlsAllowInvalidCertificates=true`
+  ? `${mongoUri}?ssl=true&tls=true&tlsAllowInvalidCertificates=false&retryWrites=true&w=majority`
   : mongoUri;
 
-const client = new MongoClient(finalMongoUri);
+console.log('MongoDB URI (masked):', finalMongoUri.replace(/\/\/[^@]+@/, '//***:***@'));
+
+const client = new MongoClient(finalMongoUri, {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 30000,
+  connectTimeoutMS: 10000,
+  retryWrites: true,
+  retryReads: true
+});
 
 let db: any;
 
 export const connectToDatabase = async () => {
-  try {
-    validateSSLConfiguration();
-    
-    await client.connect();
-    db = client.db();
-    console.log('Connected to MongoDB successfully');
-    console.log('SSL/TLS Status:', finalMongoUri.includes('ssl=true') || finalMongoUri.includes('tls=true') ? 'Enabled' : 'Disabled');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
+  const maxRetries = 3;
+  let retryCount = 0;
+  
+  while (retryCount < maxRetries) {
+    try {
+      validateSSLConfiguration();
+      
+      console.log(`Attempting to connect to MongoDB (attempt ${retryCount + 1}/${maxRetries})...`);
+      await client.connect();
+      db = client.db();
+      
+      console.log('Connected to MongoDB successfully');
+      console.log('SSL/TLS Status:', finalMongoUri.includes('ssl=true') || finalMongoUri.includes('tls=true') ? 'Enabled' : 'Disabled');
+      
+      // Test the connection with a simple ping
+      await db.admin().ping();
+      console.log('MongoDB connection verified with ping');
+      
+      return;
+    } catch (error) {
+      retryCount++;
+      console.error(`MongoDB connection attempt ${retryCount} failed:`, error instanceof Error ? error.message : String(error));
+      
+      if (retryCount < maxRetries) {
+        console.log(`Retrying in ${2 * retryCount} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+      } else {
+        console.error('MongoDB connection failed after all retries');
+        console.error('Please check your MONGODB_URI environment variable');
+        console.error('Ensure your MongoDB Atlas cluster is accessible and the connection string is correct');
+        process.exit(1);
+      }
+    }
   }
 };
 
