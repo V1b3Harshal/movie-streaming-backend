@@ -25,10 +25,20 @@ const validateSSLConfiguration = () => {
 
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/movie-streaming-backend';
 
-// Apply SSL/TLS settings if not explicitly configured
-const finalMongoUri = !mongoUri.includes('ssl=true') && !mongoUri.includes('tls=true')
-  ? `${mongoUri}?ssl=true&tls=true&tlsAllowInvalidCertificates=false&retryWrites=true&w=majority`
-  : mongoUri;
+// Clean and validate URI - remove duplicate/conflicting parameters
+const cleanUri = mongoUri
+  .replace(/([?&])retryWrites=true&?/g, '$1') // Remove duplicate retryWrites
+  .replace(/([?&])w=majority&?/g, '$1') // Remove duplicate w=majority
+  .replace(/([?&])ssl=true&?/g, '$1') // Remove duplicate ssl=true
+  .replace(/([?&])tls=true&?/g, '$1') // Remove duplicate tls=true
+  .replace(/([?&])tlsAllowInvalidCertificates=false&?/g, '$1') // Remove duplicate tlsAllowInvalidCertificates
+  .replace(/([?&])appName=[^&]*&?/g, '$1') // Remove appName parameter
+  .replace(/([?&])$/, ''); // Remove trailing ? or &
+
+// Apply clean SSL/TLS settings
+const finalMongoUri = cleanUri.includes('ssl=true') || cleanUri.includes('tls=true')
+  ? cleanUri
+  : `${cleanUri}?ssl=true&tls=true&tlsAllowInvalidCertificates=false&retryWrites=true&w=majority`;
 
 console.log('MongoDB URI (masked):', finalMongoUri.replace(/\/\/[^@]+@/, '//***:***@'));
 
@@ -36,7 +46,7 @@ const client = new MongoClient(finalMongoUri, {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
-  connectTimeoutMS: 15000,
+  connectTimeoutMS: 30000, // Increased to 30 seconds
   retryWrites: true,
   retryReads: true
 });
