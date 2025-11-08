@@ -1,44 +1,190 @@
-// Upstash Redis configuration
+// Enhanced Upstash Redis configuration with real Redis client
 import { env } from 'process';
+import { logger } from '../utils/logger';
 
 // Check if Upstash is configured
 const isUpstashConfigured = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN;
 
 // Redis client instance
 let isConnected = false;
+let redisClient: any = null;
+
+// Real Upstash Redis client using REST API
+class UpstashRedisClient {
+  private baseUrl: string;
+  private token: string;
+  private isHealthy = true;
+
+  constructor(baseUrl: string, token: string) {
+    this.baseUrl = baseUrl;
+    this.token = token;
+  }
+
+  private async request(endpoint: string, method: string = 'GET', body?: any) {
+    const url = `${this.baseUrl}/${endpoint}`;
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+        'Content-Type': 'application/json'
+      }
+    };
+
+    if (body && (method === 'POST' || method === 'PUT')) {
+      options.body = JSON.stringify(body);
+    }
+
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`Upstash Redis error: ${response.status} ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      this.isHealthy = false;
+      throw error;
+    }
+  }
+
+  async set(key: string, value: string, options?: { EX?: number; PX?: number }): Promise<any> {
+    const body = {
+      key,
+      value,
+      ...(options?.EX && { ex: options.EX }),
+      ...(options?.PX && { px: options.PX })
+    };
+    return await this.request('set', 'POST', body);
+  }
+
+  async get(key: string): Promise<any> {
+    const result = await this.request(`get/${encodeURIComponent(key)}`);
+    return result.result || null;
+  }
+
+  async del(key: string): Promise<any> {
+    return await this.request(`del/${encodeURIComponent(key)}`, 'POST');
+  }
+
+  async exists(key: string): Promise<any> {
+    return await this.request(`exists/${encodeURIComponent(key)}`);
+  }
+
+  async expire(key: string, seconds: number): Promise<any> {
+    return await this.request(`expire/${encodeURIComponent(key)}/${seconds}`, 'POST');
+  }
+
+  async ttl(key: string): Promise<any> {
+    return await this.request(`ttl/${encodeURIComponent(key)}`);
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<any> {
+    return await this.request('zadd', 'POST', {
+      key,
+      member: [{ score, member }]
+    });
+  }
+
+  async zrange(key: string, min: number, max: number, options?: { REV?: boolean; WITHSCORES?: boolean }): Promise<any> {
+    const params = [encodeURIComponent(key), min, max];
+    if (options?.REV) params.push('REV');
+    if (options?.WITHSCORES) params.push('WITHSCORES');
+    return await this.request(`zrange/${params.join('/')}`);
+  }
+
+  async zrem(key: string, member: string): Promise<any> {
+    return await this.request('zrem', 'POST', {
+      key,
+      members: [member]
+    });
+  }
+
+  async zremrangebyscore(key: string, min: number, max: number): Promise<any> {
+    return await this.request('zremrangebyscore', 'POST', {
+      key,
+      min,
+      max
+    });
+  }
+
+  async zcard(key: string): Promise<any> {
+    return await this.request(`zcard/${encodeURIComponent(key)}`);
+  }
+
+  async sadd(key: string, members: string[]): Promise<any> {
+    return await this.request('sadd', 'POST', {
+      key,
+      members
+    });
+  }
+
+  async srem(key: string, member: string): Promise<any> {
+    return await this.request('srem', 'POST', {
+      key,
+      members: [member]
+    });
+  }
+
+  async smembers(key: string): Promise<any> {
+    return await this.request(`smembers/${encodeURIComponent(key)}`);
+  }
+
+  async hset(key: string, field: string, value: string): Promise<any> {
+    return await this.request('hset', 'POST', {
+      key,
+      field,
+      value
+    });
+  }
+
+  async hget(key: string, field: string): Promise<any> {
+    return await this.request(`hget/${encodeURIComponent(key)}/${encodeURIComponent(field)}`);
+  }
+
+  async hgetall(key: string): Promise<any> {
+    return await this.request(`hgetall/${encodeURIComponent(key)}`);
+  }
+
+  async ping(): Promise<any> {
+    return await this.request('ping');
+  }
+
+  isHealthyCheck(): boolean {
+    return this.isHealthy;
+  }
+
+  async health(): Promise<{ status: string; responseTime: number }> {
+    const start = Date.now();
+    try {
+      await this.ping();
+      return { status: 'healthy', responseTime: Date.now() - start };
+    } catch (error) {
+      return { status: 'unhealthy', responseTime: Date.now() - start };
+    }
+  }
+}
 
 // Initialize Upstash Redis client
 export const connectToRedis = async (): Promise<void> => {
   if (!isUpstashConfigured) {
-    console.log('Upstash Redis configuration missing, using in-memory fallback');
+    logger.warn('Upstash Redis configuration missing, using in-memory fallback');
     isConnected = true;
     return;
   }
 
   try {
-    // Use fetch API for Upstash REST API - test with a simple ping
-    const response = await fetch(`${env.UPSTASH_REDIS_REST_URL}/ping`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${env.UPSTASH_REDIS_REST_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to connect to Upstash: ${response.status} ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    if (result.result !== 'PONG') {
-      throw new Error(`Upstash ping returned unexpected result: ${result.result}`);
-    }
-
+    const client = new UpstashRedisClient(
+      env.UPSTASH_REDIS_REST_URL!,
+      env.UPSTASH_REDIS_REST_TOKEN!
+    );
+    
+    // Test connection
+    await client.ping();
+    redisClient = client;
     isConnected = true;
-    console.log('Connected to Upstash Redis successfully');
+    logger.info('Connected to Upstash Redis successfully');
   } catch (error) {
-    console.error('Failed to connect to Upstash Redis:', error);
-    console.log('Using in-memory fallback');
+    logger.error('Failed to connect to Upstash Redis:', error);
+    logger.warn('Using in-memory fallback');
     isConnected = true; // Allow fallback to continue
   }
 };
@@ -49,10 +195,44 @@ export const getRedisClient = () => {
     throw new Error('Redis not connected. Call connectToRedis() first.');
   }
   
+  // If we have a real Upstash Redis client, use it
+  if (redisClient) {
+    return redisClient;
+  }
+  
+  // Fallback to in-memory implementation
   const memoryStore = new Map<string, any>();
   
   return {
     // Redis operations
+    set: async (key: string, value: string, options?: { EX?: number }) => {
+      memoryStore.set(key, value);
+      return { result: 'OK' };
+    },
+
+    get: async (key: string) => {
+      return { result: memoryStore.get(key) || null };
+    },
+
+    del: async (key: string) => {
+      const deleted = memoryStore.delete(key);
+      return { result: deleted ? 1 : 0 };
+    },
+
+    exists: async (key: string) => {
+      return { result: memoryStore.has(key) ? 1 : 0 };
+    },
+
+    expire: async (key: string, seconds: number) => {
+      // In-memory TTL simulation (basic implementation)
+      return { result: 1 };
+    },
+
+    ttl: async (key: string) => {
+      return { result: -1 }; // No TTL in memory store
+    },
+
+    // Set operations for rate limiting
     zAdd: async (key: string, entries: Array<{ score: number; value: string }>) => {
       if (!memoryStore.has(key)) {
         memoryStore.set(key, new Map());
@@ -86,16 +266,7 @@ export const getRedisClient = () => {
       return { result: memoryStore.get(key).size };
     },
 
-    expire: async (key: string, seconds: number) => {
-      // In-memory implementation doesn't support TTL, but we'll simulate it
-      return { result: 1 };
-    },
-
-    del: async (key: string) => {
-      const deleted = memoryStore.delete(key);
-      return { result: deleted ? 1 : 0 };
-    },
-
+    // Set operations
     sAdd: async (key: string, members: string[]) => {
       if (!memoryStore.has(key)) {
         memoryStore.set(key, new Set());
@@ -120,6 +291,15 @@ export const getRedisClient = () => {
       return { result: deleted ? 1 : 0 };
     },
 
+    sMembers: async (key: string) => {
+      if (!memoryStore.has(key)) {
+        return { result: [] };
+      }
+      const set = memoryStore.get(key);
+      return { result: Array.from(set) };
+    },
+
+    // Hash operations
     hGetAll: async (key: string) => {
       if (!memoryStore.has(key)) {
         return { result: {} };
@@ -136,14 +316,12 @@ export const getRedisClient = () => {
       return { result: 1 };
     },
 
-    multi: () => {
-      // Return a mock multi object for batch operations
-      return {
-        exec: async () => {
-          // For now, execute operations sequentially
-          return [];
-        }
-      };
+    hGet: async (key: string, field: string) => {
+      if (!memoryStore.has(key)) {
+        return { result: null };
+      }
+      const hash = memoryStore.get(key);
+      return { result: hash.get(field) || null };
     },
 
     // Additional functions for refresh token support
@@ -192,26 +370,66 @@ export const getRedisClient = () => {
       return { result: cleaned };
     },
 
+    // Health check
+    ping: async () => {
+      return { result: 'PONG' };
+    },
+
     // Utility methods
     isRedisConnected: () => isConnected,
     getRedisUrl: () => env.UPSTASH_REDIS_REST_URL || 'in-memory',
-    getRedisToken: () => env.UPSTASH_REDIS_REST_TOKEN || ''
+    getRedisToken: () => env.UPSTASH_REDIS_REST_TOKEN || '',
+    isRealRedis: () => !!redisClient
   };
 };
 
 // Check if Redis is connected
 export const isRedisConnected = () => isConnected;
 
-// Cleanup expired keys (Upstash handles TTL automatically, but we can add custom cleanup)
+// Check Redis health
+export const getRedisHealth = async (): Promise<{ status: string; responseTime: number; type: string }> => {
+  const start = Date.now();
+  
+  if (redisClient) {
+    try {
+      const health = await redisClient.health();
+      return { 
+        status: health.status, 
+        responseTime: health.responseTime, 
+        type: 'upstash-redis' 
+      };
+    } catch (error) {
+      return { 
+        status: 'unhealthy', 
+        responseTime: Date.now() - start, 
+        type: 'upstash-redis' 
+      };
+    }
+  }
+  
+  return { 
+    status: 'healthy', 
+    responseTime: Date.now() - start, 
+    type: 'in-memory' 
+  };
+};
+
+// Cleanup expired keys
 export const cleanupExpiredKeys = async (): Promise<void> => {
   if (!isConnected) return;
   
   try {
-    // In-memory implementation doesn't need cleanup
-    // Upstash automatically handles TTL expiration
-    console.log('Redis cleanup completed');
+    if (redisClient) {
+      // Upstash handles TTL automatically, but we can add custom cleanup logic
+      logger.info('Redis cleanup completed (Upstash handles TTL automatically)');
+    } else {
+      // In-memory cleanup
+      const client = getRedisClient();
+      await client.cleanupExpiredTokens();
+      logger.info('In-memory Redis cleanup completed');
+    }
   } catch (error) {
-    console.error('Error during Redis cleanup:', error);
+    logger.error('Error during Redis cleanup:', error);
   }
 };
 
@@ -223,5 +441,10 @@ export const RedisKeys = {
   rooms: 'rooms:',
   roomParticipants: 'room_participants:',
   roomState: 'room_state:',
-  activeRooms: 'active_rooms:'
+  activeRooms: 'active_rooms:',
+  cache: 'cache:',
+  metrics: 'metrics:',
+  userData: 'user:',
+  watchParty: 'watch_party:',
+  providerCache: 'provider_cache:'
 };
