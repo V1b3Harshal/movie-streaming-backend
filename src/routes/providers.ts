@@ -1,147 +1,59 @@
+// Proxy route to providers-backend
 import { FastifyPluginAsync } from 'fastify';
-import axios from 'axios';
-import { internalAuth } from '../middleware/internalAuth';
-import { sanitizeId } from '../utils/sanitizer';
-import { createSafeErrorResponse, logErrorWithDetails } from '../utils/errorHandler';
+import { logErrorWithDetails } from '../utils/errorHandler';
 
-interface ProviderEmbedResponse {
-  iframeUrl: string;
-  provider: string;
-  movieId: string;
-}
-
-const providersRoutes: FastifyPluginAsync = async (fastify) => {
-  // Get provider embed URL
-  fastify.get('/:provider/:id', { preHandler: [internalAuth] }, async (request, reply) => {
+const providersProxyRoutes: FastifyPluginAsync = async (fastify) => {
+  // Proxy all provider requests to providers-backend
+  fastify.all('/*', async (request, reply) => {
     try {
-      const { provider, id } = request.params as { provider: string; id: string };
+      const providersBackendUrl = process.env.PROVIDERS_BACKEND_URL;
+      const internalApiKey = process.env.INTERNAL_API_KEY;
       
-      if (!provider || typeof provider !== 'string') {
-        return reply.code(400).send({ error: 'Provider name is required' });
+      if (!providersBackendUrl || !internalApiKey) {
+        throw new Error('Providers backend configuration missing');
       }
+
+      // Build target URL
+      const targetUrl = `${providersBackendUrl}/providers${request.url.replace('/providers', '')}`;
       
-      if (!id || typeof id !== 'string') {
-        return reply.code(400).send({ error: 'Movie ID is required' });
-      }
-      
-      const sanitizedId = sanitizeId(id);
-      if (!sanitizedId) {
-        return reply.code(400).send({ error: 'Invalid movie ID' });
-      }
-      
-      // Call the Providers Backend API
-      const providersBackendUrl = process.env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
-      const response = await axios.get<ProviderEmbedResponse>(
-        `${providersBackendUrl}/${provider}/${sanitizedId}`,
-        {
-          headers: {
-            'x-internal-key': process.env.INTERNAL_API_KEY || 'your-secure-internal-api-key-here',
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000
-        }
-      );
-      
-      return response.data;
-    } catch (error) {
-      logErrorWithDetails(error, { context: 'Get provider embed URL', provider: (request.params as any).provider });
-      
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          return reply.code(401).send({ error: 'Invalid internal API key' });
-        }
-        if (error.response?.status === 404) {
-          return reply.code(404).send({ error: 'Provider not found' });
-        }
-        if (error.response?.status === 429) {
-          return reply.code(429).send({ error: 'Rate limit exceeded' });
-        }
-        return reply.code(error.response?.status || 500).send({ 
-          error: 'Provider service error',
-          message: error.response?.data?.error || 'Failed to get provider URL'
+      // Forward the request - filter valid headers only
+      const validHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-internal-key': internalApiKey
+      };
+
+      // Add valid request headers
+      if (request.headers) {
+        Object.entries(request.headers).forEach(([key, value]) => {
+          if (typeof value === 'string' && key.toLowerCase().match(/^[a-z-]+$/)) {
+            validHeaders[key.toLowerCase()] = value;
+          }
         });
       }
-      
-      const safeError = createSafeErrorResponse(error);
-      return reply.code(safeError.statusCode).send(safeError);
-    }
-  });
 
-  // Get supported providers list
-  fastify.get('/list', { preHandler: [internalAuth] }, async (request, reply) => {
-    try {
-      // Call the Providers Backend API
-      const providersBackendUrl = process.env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
-      const response = await axios.get(
-        `${providersBackendUrl}/providers/list`,
-        {
-          headers: {
-            'x-internal-key': process.env.INTERNAL_API_KEY || 'your-secure-internal-api-key-here',
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000
-        }
-      );
-      
-      return response.data;
-    } catch (error) {
-      logErrorWithDetails(error, { context: 'Get providers list' });
-      
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          return reply.code(401).send({ error: 'Invalid internal API key' });
-        }
-        return reply.code(error.response?.status || 500).send({ 
-          error: 'Provider service error',
-          message: error.response?.data?.error || 'Failed to get providers list'
-        });
-      }
-      
-      const safeError = createSafeErrorResponse(error);
-      return reply.code(safeError.statusCode).send(safeError);
-    }
-  });
+      const response = await fetch(targetUrl, {
+        method: request.method,
+        headers: validHeaders,
+        body: request.body ? JSON.stringify(request.body) : null
+      });
 
-  // Check provider status
-  fastify.get('/status/:provider', { preHandler: [internalAuth] }, async (request, reply) => {
-    try {
-      const { provider } = request.params as { provider: string };
+      // Handle response
+      const data = await response.json();
+      reply.code(response.status).send(data);
       
-      if (!provider || typeof provider !== 'string') {
-        return reply.code(400).send({ error: 'Provider name is required' });
-      }
-      
-      // Call the Providers Backend API
-      const providersBackendUrl = process.env.PROVIDERS_BACKEND_URL || 'http://localhost:3001';
-      const response = await axios.get(
-        `${providersBackendUrl}/status/${provider}`,
-        {
-          headers: {
-            'x-internal-key': process.env.INTERNAL_API_KEY || 'your-secure-internal-api-key-here',
-            'Content-Type': 'application/json'
-          },
-          timeout: 10000
-        }
-      );
-      
-      return response.data;
     } catch (error) {
-      logErrorWithDetails(error, { context: 'Get provider status', provider: (request.params as any).provider });
+      logErrorWithDetails(error, { 
+        context: 'Providers proxy',
+        url: request.url,
+        method: request.method 
+      });
       
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          return reply.code(401).send({ error: 'Invalid internal API key' });
-        }
-        return reply.code(error.response?.status || 500).send({ 
-          error: 'Provider service error',
-          message: error.response?.data?.error || 'Failed to check provider status'
-        });
-      }
-      
-      const safeError = createSafeErrorResponse(error);
-      return reply.code(safeError.statusCode).send(safeError);
+      reply.code(500).send({
+        error: 'Provider service unavailable',
+        message: 'Unable to reach providers backend'
+      });
     }
   });
 };
 
-export default providersRoutes;
+export default providersProxyRoutes;

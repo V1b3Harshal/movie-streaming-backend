@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MovieMetadata, TvShowMetadata, SearchResults, SearchParams } from '../types/metadata';
+import { MovieMetadata, TvShowMetadata, SearchResults } from '../types/metadata';
 import { getEnv } from '../config/environment';
 
 interface TraktMovieResponse {
@@ -40,16 +40,18 @@ class TraktService {
   private static instance: TraktService;
   private baseUrl: string;
   private clientId: string;
-  private clientSecret: string;
+  // private clientSecret: string;
   
   private constructor() {
     this.baseUrl = getEnv('TRAKT_API_URL') || 'https://api.trakt.tv';
     this.clientId = getEnv('TRAKT_CLIENT_ID') || '';
-    this.clientSecret = getEnv('TRAKT_CLIENT_SECRET') || '';
+    // this.clientSecret = getEnv('TRAKT_CLIENT_SECRET') || '';
     
-    if (!this.clientId || this.clientId === 'your-trakt-client-id') {
-      console.error('TRAKT_CLIENT_ID is not configured. Current value:', this.clientId);
-      throw new Error('TRAKT_CLIENT_ID is not configured. Please set it in your environment variables.');
+    if (!this.clientId || this.clientId === 'your-trakt-client-id' || this.clientId.length < 10) {
+      console.error('TRAKT_CLIENT_ID is not configured properly. Current value:', this.clientId);
+      console.log('Available env vars starting with TRAKT:', Object.keys(process.env).filter(k => k.startsWith('TRAKT')));
+    } else {
+      console.log('TraktService initialized with clientId:', this.clientId.substring(0, 10) + '...');
     }
   }
   
@@ -111,7 +113,14 @@ class TraktService {
           },
           popularity: movie.rating,
           vote_average: movie.rating,
-          vote_count: movie.votes
+          vote_count: movie.votes,
+          poster_path: undefined,
+          backdrop_path: undefined,
+          runtime: undefined,
+          status: undefined,
+          tagline: undefined,
+          budget: undefined,
+          revenue: undefined
         };
       }).filter(Boolean) as MovieMetadata[];
       
@@ -145,7 +154,7 @@ class TraktService {
           title: show.title,
           type: 'tv',
           overview: show.overview,
-          release_date: new Date(show.year, 0, 1).toISOString().split('T')[0],
+          first_air_date: new Date(show.year, 0, 1).toISOString().split('T')[0],
           language: 'en',
           country: 'US',
           genres: [],
@@ -155,7 +164,14 @@ class TraktService {
           },
           popularity: show.rating,
           vote_average: show.rating,
-          vote_count: show.votes
+          vote_count: show.votes,
+          poster_path: undefined,
+          backdrop_path: undefined,
+          number_of_seasons: undefined,
+          number_of_episodes: undefined,
+          status: undefined,
+          last_air_date: undefined,
+          episode_run_time: undefined
         };
       }).filter(Boolean) as TvShowMetadata[];
       
@@ -173,32 +189,42 @@ class TraktService {
   
   async getTrendingMovies(page: number = 1): Promise<SearchResults> {
     try {
-      const response = await this.makeRequest<TraktMovieResponse[]>(`/movies/trending`, {
+      const response = await this.makeRequest<{ watchers: number; movie: TraktMovieResponse }[]>(`/movies/trending`, {
         page,
         limit: 20
       });
-      
+
       const movies: MovieMetadata[] = response
-        .filter(movie => movie.ids && movie.ids.tmdb && movie.ids.imdb)
-        .map(movie => ({
-          tmdb_id: movie.ids.tmdb,
-          imdb_id: movie.ids.imdb,
-          title: movie.title,
-          type: 'movie',
-          overview: movie.overview,
-          release_date: new Date(movie.year, 0, 1).toISOString().split('T')[0],
-          language: 'en',
-          country: 'US',
-          genres: [],
-          rating: {
-            trakt_rating: movie.rating,
-            votes: movie.votes
-          },
-          popularity: movie.rating,
-          vote_average: movie.rating,
-          vote_count: movie.votes
-        }));
-      
+        .filter(item => item.movie && item.movie.ids && item.movie.ids.tmdb && item.movie.ids.imdb)
+        .map(item => {
+          const movie = item.movie;
+          return {
+            tmdb_id: movie.ids.tmdb,
+            imdb_id: movie.ids.imdb,
+            title: movie.title,
+            type: 'movie',
+            overview: movie.overview,
+            release_date: new Date(movie.year, 0, 1).toISOString().split('T')[0],
+            language: 'en',
+            country: 'US',
+            genres: [],
+            rating: {
+              trakt_rating: movie.rating,
+              votes: movie.votes
+            },
+            popularity: movie.rating,
+            vote_average: movie.rating,
+            vote_count: movie.votes,
+            poster_path: undefined,
+            backdrop_path: undefined,
+            runtime: undefined,
+            status: undefined,
+            tagline: undefined,
+            budget: undefined,
+            revenue: undefined
+          };
+        });
+
       return {
         page,
         total_results: movies.length,
@@ -213,30 +239,42 @@ class TraktService {
   
   async getTrendingTvShows(page: number = 1): Promise<SearchResults> {
     try {
-      const response = await this.makeRequest<TraktTvResponse[]>(`/shows/trending`, {
+      const response = await this.makeRequest<{ watchers: number; show: TraktTvResponse }[]>(`/shows/trending`, {
         page,
         limit: 20
       });
-      
-      const shows: TvShowMetadata[] = response.map(show => ({
-        tmdb_id: show.ids.tmdb,
-        imdb_id: show.ids.imdb,
-        title: show.title,
-        type: 'tv',
-        overview: show.overview,
-        release_date: new Date(show.year, 0, 1).toISOString().split('T')[0],
-        language: 'en',
-        country: 'US',
-        genres: [],
-        rating: {
-          trakt_rating: show.rating,
-          votes: show.votes
-        },
-        popularity: show.rating,
-        vote_average: show.rating,
-        vote_count: show.votes
-      }));
-      
+
+      const shows: TvShowMetadata[] = response
+        .filter(item => item.show && item.show.ids && item.show.ids.tmdb && item.show.ids.imdb)
+        .map(item => {
+          const show = item.show;
+          return {
+            tmdb_id: show.ids.tmdb,
+            imdb_id: show.ids.imdb,
+            title: show.title,
+            type: 'tv',
+            overview: show.overview,
+            first_air_date: new Date(show.year, 0, 1).toISOString().split('T')[0],
+            language: 'en',
+            country: 'US',
+            genres: [],
+            rating: {
+              trakt_rating: show.rating,
+              votes: show.votes
+            },
+            popularity: show.rating,
+            vote_average: show.rating,
+            vote_count: show.votes,
+            poster_path: undefined,
+            backdrop_path: undefined,
+            number_of_seasons: undefined,
+            number_of_episodes: undefined,
+            status: undefined,
+            last_air_date: undefined,
+            episode_run_time: undefined
+          };
+        });
+
       return {
         page,
         total_results: shows.length,
@@ -255,26 +293,35 @@ class TraktService {
         page,
         limit: 20
       });
-      
-      const movies: MovieMetadata[] = response.map(movie => ({
-        tmdb_id: movie.ids.tmdb,
-        imdb_id: movie.ids.imdb,
-        title: movie.title,
-        type: 'movie',
-        overview: movie.overview,
-        release_date: new Date(movie.year, 0, 1).toISOString().split('T')[0],
-        language: 'en',
-        country: 'US',
-        genres: [],
-        rating: {
-          trakt_rating: movie.rating,
-          votes: movie.votes
-        },
-        popularity: movie.rating,
-        vote_average: movie.rating,
-        vote_count: movie.votes
-      }));
-      
+
+      const movies: MovieMetadata[] = response
+        .filter(movie => movie.ids && movie.ids.tmdb && movie.ids.imdb)
+        .map(movie => ({
+          tmdb_id: movie.ids.tmdb,
+          imdb_id: movie.ids.imdb,
+          title: movie.title,
+          type: 'movie',
+          overview: movie.overview,
+          release_date: new Date(movie.year, 0, 1).toISOString().split('T')[0],
+          language: 'en',
+          country: 'US',
+          genres: [],
+          rating: {
+            trakt_rating: movie.rating,
+            votes: movie.votes
+          },
+          popularity: movie.rating,
+          vote_average: movie.rating,
+          vote_count: movie.votes,
+          poster_path: undefined,
+          backdrop_path: undefined,
+          runtime: undefined,
+          status: undefined,
+          tagline: undefined,
+          budget: undefined,
+          revenue: undefined
+        }));
+
       return {
         page,
         total_results: movies.length,
@@ -293,26 +340,35 @@ class TraktService {
         page,
         limit: 20
       });
-      
-      const shows: TvShowMetadata[] = response.map(show => ({
-        tmdb_id: show.ids.tmdb,
-        imdb_id: show.ids.imdb,
-        title: show.title,
-        type: 'tv',
-        overview: show.overview,
-        release_date: new Date(show.year, 0, 1).toISOString().split('T')[0],
-        language: 'en',
-        country: 'US',
-        genres: [],
-        rating: {
-          trakt_rating: show.rating,
-          votes: show.votes
-        },
-        popularity: show.rating,
-        vote_average: show.rating,
-        vote_count: show.votes
-      }));
-      
+
+      const shows: TvShowMetadata[] = response
+        .filter(show => show.ids && show.ids.tmdb && show.ids.imdb)
+        .map(show => ({
+          tmdb_id: show.ids.tmdb,
+          imdb_id: show.ids.imdb,
+          title: show.title,
+          type: 'tv',
+          overview: show.overview,
+          first_air_date: new Date(show.year, 0, 1).toISOString().split('T')[0],
+          language: 'en',
+          country: 'US',
+          genres: [],
+          rating: {
+            trakt_rating: show.rating,
+            votes: show.votes
+          },
+          popularity: show.rating,
+          vote_average: show.rating,
+          vote_count: show.votes,
+          poster_path: undefined,
+          backdrop_path: undefined,
+          number_of_seasons: undefined,
+          number_of_episodes: undefined,
+          status: undefined,
+          last_air_date: undefined,
+          episode_run_time: undefined
+        }));
+
       return {
         page,
         total_results: shows.length,

@@ -1,281 +1,176 @@
-# Movie Streaming Backend API
+# Movie Streaming Backend
 
-A robust and secure backend API for a movie streaming platform built with Fastify, TypeScript, MongoDB, and Redis. This API provides authentication, movie and TV series management, and integration with external services like TMDB and Trakt.
+A comprehensive backend API for movie streaming platform with content discovery, user management, and real-time features.
 
-## Features
+## 🚀 Features
 
-- 🔐 **Authentication & Authorization**: JWT-based authentication with refresh tokens
-- 🎬 **Movie Management**: CRUD operations for movies with TMDB integration
-- 📺 **TV Series Management**: Complete TV series handling with episode tracking
-- 🔄 **External API Integration**: TMDB and Trakt API integration
-- 🛡️ **Security**: Comprehensive security headers, rate limiting, and input sanitization
-- 📊 **API Documentation**: Auto-generated Swagger documentation
-- 🚀 **Performance**: Redis caching for improved performance
-- 🧪 **Testing**: Jest test framework setup
+### Core Services
 
-## Tech Stack
+- **Content Discovery**: TMDB and Trakt integration for movies/TV shows
+- **User Management**: Profiles, watch history, favorites, sessions
+- **Authentication**: Supabase JWT authentication
+- **Search**: Algolia-powered instant search and suggestions
+- **Caching**: Redis-based performance optimization
+- **Real-time**: WebSocket support for watch-together
 
-- **Framework**: [Fastify](https://www.fastify.io/) - Fast and low-overhead web framework
-- **Language**: [TypeScript](https://www.typescriptlang.org/) - Typed JavaScript
-- **Database**: [MongoDB](https://www.mongodb.com/) - NoSQL database
-- **Cache**: [Redis](https://redis.io/) - In-memory data store
-- **Authentication**: [JWT](https://jwt.io/) - JSON Web Tokens
-- **External APIs**: TMDB, Trakt
-- **Package Manager**: [pnpm](https://pnpm.io/) - Fast, disk space efficient package manager
+### Monitoring & Analytics
 
-## API Endpoints
+- **Better Uptime**: 24/7 health monitoring (50 monitors free)
+- **OneSignal**: Push notifications (10K users free)
+- **PostHog**: User analytics and event tracking (1M events free)
+- **Sentry**: Error tracking and performance monitoring (free tier)
+- **ImageKit**: Image optimization (20GB bandwidth free)
 
-### Authentication
+### Security & Performance
 
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - User login
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - User logout
+- **Rate Limiting**: Distributed rate limiting with Redis
+- **Security Headers**: Helmet.js integration
+- **IP Blocking**: Suspicious activity detection
+- **Request Validation**: Input sanitization and validation
+- **Webhook Monitoring**: Real-time alerts and notifications
 
-### Movies
+## 📡 API Endpoints
 
-- `GET /movies` - Get all movies with pagination
-- `GET /movies/:id` - Get movie by ID
-- `POST /movies` - Create new movie (admin)
-- `PUT /movies/:id` - Update movie (admin)
-- `DELETE /movies/:id` - Delete movie (admin)
+### Content Discovery
 
-### TV Series
+```bash
+GET  /movies/search?query=batman     # TMDB movie search
+GET  /movies/trending                # Trending movies
+GET  /tv-series/search?query=stranger # TV series search
+GET  /tv-series/trending             # Trending TV shows
+GET  /trakt/movies/trending          # Trakt trending
+```
 
-- `GET /tv-series` - Get all TV series
-- `GET /tv-series/:id` - Get TV series by ID
-- `GET /tv-series/:id/episodes` - Get episodes for TV series
-- `POST /tv-series` - Create new TV series (admin)
-- `PUT /tv-series/:id` - Update TV series (admin)
-- `DELETE /tv-series/:id` - Delete TV series (admin)
+### Search & Suggestions
 
-### Trakt Integration
+```bash
+GET  /movies/search/instant?q=bat    # Algolia instant search
+GET  /movies/search/suggestions?q=ba # Autocomplete suggestions
+```
 
-- `GET /trakt/trending` - Get trending movies from Trakt
-- `GET /trakt/popular` - Get popular movies from Trakt
-- `GET /trakt/search` - Search movies on Trakt
+### User Management (Requires Auth)
 
-## Environment Variables
+```bash
+GET  /user/profile                   # User profile
+GET  /user/watch-history             # Watch history
+POST /user/session/start             # Start watch session
+PUT  /user/session/:id/progress      # Update progress
+POST /user/favorites/:contentId      # Toggle favorites
+```
 
-Create a `.env` file in the root directory with the following variables:
+### Providers (Proxy to Providers Backend)
 
-```env
-# Server Configuration
-NODE_ENV=production
+```bash
+GET  /providers/list                 # Available providers
+GET  /providers/:provider/:id       # Embed URLs
+```
+
+### Watch Together (Proxy to Providers Backend)
+
+```bash
+GET  /watch-together/rooms           # Active rooms
+POST /watch-together/rooms           # Create room
+```
+
+### Monitoring
+
+```bash
+GET  /health                         # Service health
+GET  /security/status                # Security config
+GET  /health/providers               # Providers backend health
+```
+
+## 🛠️ Setup & Installation
+
+### Prerequisites
+
+- Node.js 18+
+- Railway account (free)
+- Supabase project
+- Upstash Redis (free tier)
+- TMDB API key
+
+### Local Development
+
+```bash
+npm install
+cp .env.example .env  # Configure environment variables
+npm run dev          # Start development server
+```
+
+### Environment Variables
+
+```bash
+# Core
+NODE_ENV=development
 PORT=3000
+SUPABASE_URL=your-supabase-url
+SUPABASE_ANON_KEY=your-anon-key
+UPSTASH_REDIS_REST_URL=your-redis-url
+UPSTASH_REDIS_REST_TOKEN=your-redis-token
 
-# JWT Configuration
-JWT_SECRET=your_super_secure_jwt_secret_here
-JWT_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
+# APIs
+TMDB_API_KEY=your-tmdb-key
+ONESIGNAL_APP_ID=your-onesignal-id
+ONESIGNAL_REST_API_KEY=your-onesignal-key
 
-# Database Configuration
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
+# Monitoring (Optional)
+SENTRY_DSN=your-sentry-dsn
+POSTHOG_API_KEY=your-posthog-key
+BETTER_UPTIME_API_KEY=your-betteruptime-key
+ALGOLIA_APP_ID=your-algolia-id
+ALGOLIA_API_KEY=your-algolia-key
 
-# Redis Configuration (Optional)
-REDIS_URL=redis://localhost:6379
-
-# External API Keys
-TMDB_API_KEY=your_tmdb_api_key_here
-TMDB_API_URL=https://api.themoviedb.org/3
-
-TRAKT_CLIENT_ID=your_trakt_client_id_here
-TRAKT_CLIENT_SECRET=your_trakt_client_secret_here
-TRAKT_API_URL=https://api.trakt.tv
-
-# CORS Configuration
-CORS_ORIGIN=https://your-frontend-domain.com
-CORS_CREDENTIALS=true
-
-# Rate Limiting
-RATE_LIMIT_MAX_REQUESTS=100
-RATE_LIMIT_WINDOW_MS=60000
-
-# Swagger Configuration
-SWAGGER_TITLE=Movie Streaming Backend API
-SWAGGER_DESCRIPTION=API for Movie Streaming Backend
-SWAGGER_VERSION=1.0.0
-SWAGGER_HOST=api.yourdomain.com
+# Providers Backend Integration
+PROVIDERS_BACKEND_URL=http://localhost:3001
+INTERNAL_API_KEY=your-internal-key
 ```
 
-## Installation
-
-1. Clone the repository:
+### Deployment
 
 ```bash
-git clone https://github.com/your-username/movie-streaming-backend.git
-cd movie-streaming-backend
+railway init
+railway up
+# Set environment variables in Railway dashboard
+railway deploy
 ```
 
-2. Install dependencies:
+## 🔗 Architecture
 
-```bash
-pnpm install
-```
+This backend serves as the main API for content discovery and user management:
 
-3. Set up environment variables:
+- **Main Backend**: Content search, user profiles, watch history
+- **Providers Backend**: Streaming providers, watch-together, real-time features
 
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
+## 📊 Tech Stack
 
-4. Set up MongoDB:
+- **Runtime**: Node.js + TypeScript
+- **Framework**: Fastify
+- **Database**: Supabase PostgreSQL
+- **Cache**: Upstash Redis
+- **Auth**: Supabase JWT
+- **Search**: Algolia (instant search)
+- **Monitoring**: Better Uptime, Sentry, PostHog
+- **Notifications**: OneSignal
+- **CDN**: Cloudflare
 
-- Create a MongoDB Atlas account or use local MongoDB
-- Update `MONGODB_URI` in your `.env` file
+## 📈 Performance & Monitoring
 
-5. Set up Redis (Optional):
+- **Health Checks**: `/health` endpoint with service monitoring
+- **Rate Limiting**: Redis-based distributed rate limiting
+- **Caching**: TTL-based caching for API responses
+- **Analytics**: PostHog event tracking and user behavior
+- **Error Tracking**: Sentry integration with performance monitoring
+- **Search**: Algolia-powered instant search and autocomplete
 
-- Install Redis locally or use Redis Cloud
-- Update `REDIS_URL` in your `.env` file
+## 🔒 Security
 
-6. Get API keys:
+- Supabase JWT authentication for protected routes
+- Rate limiting and request sanitization
+- Security headers via Helmet.js
+- IP blocking for suspicious activity
+- CSRF protection and input validation
 
-- [TMDB API Key](https://www.themoviedb.org/documentation/api)
-- [Trakt API Key](https://trakt.tv/oauth/applications)
+## 📝 License
 
-7. Build the project:
-
-```bash
-pnpm run build
-```
-
-8. Start the server:
-
-```bash
-pnpm start
-```
-
-## Development
-
-### Start in development mode:
-
-```bash
-pnpm run dev
-```
-
-### Run tests:
-
-```bash
-pnpm test
-```
-
-### Run tests in watch mode:
-
-```bash
-pnpm run test:watch
-```
-
-### Lint code:
-
-```bash
-pnpm run lint
-```
-
-### Fix linting issues:
-
-```bash
-pnpm run lint:fix
-```
-
-## API Documentation
-
-Once the server is running, you can access the interactive API documentation at:
-
-- `http://localhost:3000/docs` (Swagger UI)
-
-## Project Structure
-
-```
-src/
-├── config/           # Configuration files
-│   ├── database.ts   # MongoDB connection
-│   ├── environment.ts # Environment variables
-│   └── redis.ts      # Redis connection
-├── middleware/       # Custom middleware
-│   └── auth.ts       # Authentication middleware
-├── models/           # Database models
-│   └── user.ts       # User model
-├── routes/           # API routes
-│   ├── auth.ts       # Authentication routes
-│   ├── movies.ts     # Movie routes
-│   ├── tvSeries.ts   # TV series routes
-│   └── trakt.ts      # Trakt integration routes
-├── services/         # Business logic
-│   ├── movieService.ts
-│   ├── tmdbService.ts
-│   ├── traktService.ts
-│   ├── tvSeriesService.ts
-│   └── userService.ts
-├── types/            # TypeScript type definitions
-├── utils/            # Utility functions
-│   ├── errorHandler.ts
-│   ├── jwt.ts
-│   ├── refreshToken.ts
-│   └── sanitizer.ts
-└── server.ts         # Main server file
-```
-
-## Security Features
-
-- JWT-based authentication with refresh tokens
-- Rate limiting to prevent abuse
-- CORS configuration for cross-origin requests
-- Helmet for security headers
-- Input sanitization to prevent XSS attacks
-- Comprehensive error handling
-- Request logging for security monitoring
-
-## Deployment
-
-### Render.com (Recommended)
-
-1. Create a Render account
-2. Connect your GitHub repository
-3. Configure environment variables
-4. Set build command: `pnpm run build`
-5. Set start command: `pnpm start`
-
-### Heroku
-
-1. Create a Heroku account
-2. Install Heroku CLI
-3. Run `heroku create`
-4. Set environment variables: `heroku config:set VAR=value`
-5. Deploy: `git push heroku main`
-
-### Railway.app
-
-1. Create a Railway account
-2. Connect your GitHub repository
-3. Configure environment variables
-4. Deploy automatically
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Commit your changes: `git commit -am 'Add new feature'`
-4. Push to the branch: `git push origin feature/new-feature`
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-If you encounter any issues or have questions:
-
-1. Check the [Issues](https://github.com/your-username/movie-streaming-backend/issues) page
-2. Create a new issue with detailed description
-3. Provide steps to reproduce the problem
-
-## Acknowledgments
-
-- [Fastify](https://www.fastify.io/) for the amazing web framework
-- [MongoDB](https://www.mongodb.com/) for the excellent database
-- [Redis](https://redis.io/) for the fast caching solution
-- [TMDB](https://www.themoviedb.org/) for the movie database API
-- [Trakt](https://trakt.tv/) for the TV and movie tracking API
+MIT License

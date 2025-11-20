@@ -5,7 +5,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { PROVIDERS_BACKEND_URL } from '../config/environment';
 import { logger } from '../utils/logger';
-import { createSafeErrorResponse } from '../utils/errorHandler';
+import '../utils/errorHandler';
 
 // Circuit breaker for backend communication
 class CircuitBreaker {
@@ -33,21 +33,21 @@ class CircuitBreaker {
 
 const circuitBreaker = new CircuitBreaker();
 
-// Cache for frequently accessed data
-const cache = new Map();
+// Cache for frequently accessed data - currently unused
+// const cache = new Map();
 
-async function getCachedData(key: string, fetchFn: () => Promise<any>, ttl = 300000): Promise<any> {
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < ttl) {
-    logger.debug(`Cache hit for ${key}`);
-    return cached.data;
-  }
-  
-  logger.debug(`Cache miss for ${key}, fetching fresh data`);
-  const data = await fetchFn();
-  cache.set(key, { data, timestamp: Date.now() });
-  return data;
-}
+// async function getCachedData(key: string, fetchFn: () => Promise<any>, ttl = 300000): Promise<any> {
+//   const cached = cache.get(key);
+//   if (cached && Date.now() - cached.timestamp < ttl) {
+//     logger.debug(`Cache hit for ${key}`);
+//     return cached.data;
+//   }
+//
+//   logger.debug(`Cache miss for ${key}, fetching fresh data`);
+//   const data = await fetchFn();
+//   cache.set(key, { data, timestamp: Date.now() });
+//   return data;
+// }
 
 // Rate limiting for internal requests
 const internalRateLimit = new Map();
@@ -101,7 +101,7 @@ const watchTogetherRoutes: FastifyPluginAsync = async (fastify) => {
             'User-Agent': 'Movie-Streaming-Backend/1.0'
           },
           signal: AbortSignal.timeout(5000), // 5 second timeout
-          body: ['GET', 'HEAD'].includes(request.method) ? undefined : JSON.stringify(request.body)
+          body: ['GET', 'HEAD'].includes(request.method) ? null : JSON.stringify(request.body)
         })
       );
 

@@ -1,4 +1,4 @@
-import { TvShowMetadata, SearchResults, SearchParams } from '../types/metadata';
+import { TvShowMetadata, SearchResults } from '../types/metadata';
 import { TmdbTvResponse } from '../types/tmdb';
 import { TMDB_API_URL, TMDB_API_KEY } from '../config/environment';
 import axios from 'axios';
@@ -160,45 +160,45 @@ class TvSeriesService {
   }
   
   private mapTvSeries(shows: TmdbTvResponse[]): TvShowMetadata[] {
-    return shows.map(show => ({
-      tmdb_id: show.id,
-      imdb_id: show.imdb_id,
-      title: show.name,
-      type: 'tv',
-      overview: show.overview,
-      release_date: show.first_air_date,
-      language: show.original_language,
-      country: show.origin_country?.[0],
-      genres: show.genre_ids.map((id: number) => ({ id, name: '' })),
-      rating: {
-        imdb_rating: show.vote_average,
-        votes: show.vote_count
-      },
-      poster_path: show.poster_path,
-      backdrop_path: show.backdrop_path,
-      popularity: show.popularity,
-      vote_average: show.vote_average,
-      vote_count: show.vote_count,
-      first_air_date: show.first_air_date,
-      last_air_date: show.last_air_date,
-      status: show.status,
-      number_of_episodes: show.number_of_episodes,
-      number_of_seasons: show.number_of_seasons,
-      episode_run_time: show.episode_run_time
-    }));
+   return shows.map(show => ({
+     tmdb_id: show.id,
+     imdb_id: show.imdb_id || '',
+     title: show.name,
+     type: 'tv',
+     overview: show.overview,
+     release_date: show.first_air_date,
+     language: show.original_language,
+     country: show.origin_country?.[0] || '',
+     genres: (show.genre_ids || []).map((id: number) => ({ id, name: '' })),
+     rating: {
+       imdb_rating: show.vote_average,
+       votes: show.vote_count
+     },
+     poster_path: show.poster_path,
+     backdrop_path: show.backdrop_path,
+     popularity: show.popularity,
+     vote_average: show.vote_average,
+     vote_count: show.vote_count,
+     first_air_date: show.first_air_date,
+     last_air_date: show.last_air_date,
+     status: show.status,
+     number_of_episodes: show.number_of_episodes,
+     number_of_seasons: show.number_of_seasons,
+     episode_run_time: show.episode_run_time
+   }));
   }
   
   private mapTvSeriesDetails(show: TmdbTvResponse): TvShowMetadata {
     return {
       tmdb_id: show.id,
-      imdb_id: show.imdb_id,
+      imdb_id: show.imdb_id || '',
       title: show.name,
       type: 'tv',
       overview: show.overview,
-      release_date: show.first_air_date,
+      first_air_date: show.first_air_date,
       language: show.original_language,
-      country: show.origin_country?.[0],
-      genres: show.genres.map((genre: { id: number; name: string }) => ({ id: genre.id, name: genre.name })),
+      country: show.origin_country?.[0] || '',
+      genres: (show.genres || []).map((genre: { id: number; name: string }) => ({ id: genre.id, name: genre.name })),
       rating: {
         imdb_rating: show.vote_average,
         votes: show.vote_count
@@ -208,7 +208,6 @@ class TvSeriesService {
       popularity: show.popularity,
       vote_average: show.vote_average,
       vote_count: show.vote_count,
-      first_air_date: show.first_air_date,
       last_air_date: show.last_air_date,
       status: show.status,
       number_of_episodes: show.number_of_episodes,

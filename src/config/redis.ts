@@ -205,8 +205,8 @@ export const getRedisClient = () => {
   
   return {
     // Redis operations
-    set: async (key: string, value: string, options?: { EX?: number }) => {
-      memoryStore.set(key, value);
+    set: async (_key: string, value: string, _options?: { EX?: number }) => {
+      memoryStore.set(_key, value);
       return { result: 'OK' };
     },
 
@@ -223,12 +223,12 @@ export const getRedisClient = () => {
       return { result: memoryStore.has(key) ? 1 : 0 };
     },
 
-    expire: async (key: string, seconds: number) => {
+    expire: async (_key: string, _seconds: number) => {
       // In-memory TTL simulation (basic implementation)
       return { result: 1 };
     },
 
-    ttl: async (key: string) => {
+    ttl: async (_key: string) => {
       return { result: -1 }; // No TTL in memory store
     },
 

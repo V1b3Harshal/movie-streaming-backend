@@ -6,8 +6,7 @@ const levels = {
   error: 0,
   warn: 1,
   info: 2,
-  http: 3,
-  debug: 4,
+  debug: 3,
 };
 
 // Define colors for each level
@@ -15,7 +14,6 @@ const colors = {
   error: 'red',
   warn: 'yellow',
   info: 'green',
-  http: 'magenta',
   debug: 'white',
 };
 
@@ -34,15 +32,31 @@ const format = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
   winston.format.colorize({ all: true }),
   winston.format.printf(
-    (info: any) => `${info.timestamp} ${info.level}: ${info.message}`,
+    (info: any) => `${info.timestamp} [${info.level}]: ${info.message}`,
   ),
 );
+
+// Create logs directory if it doesn't exist
+import fs from 'fs';
+import path from 'path';
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
 
 // Define transports (where logs go)
 const transports = [
   // Console transport
   new winston.transports.Console({
-    format: format,
+    format,
+  }),
+  // File transport for all logs
+  new winston.transports.File({
+    filename: 'logs/app.log',
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.json(),
+    ),
   }),
   // File transport for errors
   new winston.transports.File({
@@ -53,48 +67,19 @@ const transports = [
       winston.format.json(),
     ),
   }),
-  // File transport for all logs
-  new winston.transports.File({
-    filename: 'logs/combined.log',
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.json(),
-    ),
-  }),
 ];
 
-// Create the logger
+// Create the main logger
 export const logger = winston.createLogger({
   level: level(),
   levels,
   format,
   transports,
+  exitOnError: false,
 });
 
-// HTTP request logger middleware
-export const httpLogger = winston.createLogger({
-  level: 'http',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json(),
-  ),
-  transports: [
-    new winston.transports.File({
-      filename: 'logs/http.log',
-    }),
-  ],
-});
-
-// Error logger for structured error logging
-export const errorLogger = winston.createLogger({
-  level: 'error',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json(),
-  ),
-  transports: [
-    new winston.transports.File({
-      filename: 'logs/errors.log',
-    }),
-  ],
-});
+// Export logger methods for convenience
+export const logError = (message: string, error?: any) => logger.error(message, { error });
+export const logInfo = (message: string, data?: any) => logger.info(message, data);
+export const logWarn = (message: string, data?: any) => logger.warn(message, data);
+export const logDebug = (message: string, data?: any) => logger.debug(message, data);

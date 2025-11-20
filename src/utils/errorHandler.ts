@@ -1,3 +1,4 @@
+import { logger } from './logger';
 /**
  * Enhanced error handling to prevent information leakage
  */
@@ -10,7 +11,7 @@ export const sanitizeError = (error: unknown): string => {
       .replace(/token/gi, '[REDACTED]')
       .replace(/secret/gi, '[REDACTED]')
       .replace(/key/gi, '[REDACTED]')
-      .replace(/mongodb:\/\/[^:]+:[^@]+@/g, 'mongodb://[REDACTED]:[REDACTED]@')
+      .replace(/supabase:\/\/[^:]+:[^@]+@/g, 'supabase://[REDACTED]:[REDACTED]@')
       .substring(0, 500); // Limit error message length
   }
   
@@ -61,5 +62,5 @@ export const logErrorWithDetails = (error: unknown, context?: Record<string, unk
     environment: process.env.NODE_ENV,
   };
   
-  console.error('Error Details:', errorDetails);
+  logger.error('Error Details:', errorDetails);
 };

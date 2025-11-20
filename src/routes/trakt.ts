@@ -1,11 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
 import traktService from '../services/traktService';
-import { authenticate } from '../middleware/auth';
-import { sanitizeSearchQuery, sanitizeId } from '../utils/sanitizer';
+import { sanitizeSearchQuery } from '../utils/sanitizer';
 import { createSafeErrorResponse, logErrorWithDetails } from '../utils/errorHandler';
 
 const traktRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/movies/search', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/movies/search', async (request, reply) => {
     try {
       const { query, page } = request.query as { query: string; page?: number };
       
@@ -27,7 +26,7 @@ const traktRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.get('/tv-series/search', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/tv-series/search', async (request, reply) => {
     try {
       const { query, page } = request.query as { query: string; page?: number };
       
@@ -49,7 +48,7 @@ const traktRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.get('/movies/trending', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/movies/trending', async (request, reply) => {
     try {
       const { page } = request.query as { page?: number };
       const results = await traktService.getTrendingMovies(page);
@@ -61,7 +60,7 @@ const traktRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.get('/tv-series/trending', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/tv-series/trending', async (request, reply) => {
     try {
       const { page } = request.query as { page?: number };
       const results = await traktService.getTrendingTvShows(page);
@@ -73,7 +72,7 @@ const traktRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.get('/movies/popular', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/movies/popular', async (request, reply) => {
     try {
       const { page } = request.query as { page?: number };
       const results = await traktService.getPopularMovies(page);
@@ -85,7 +84,7 @@ const traktRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.get('/tv-series/popular', { preHandler: [authenticate] }, async (request, reply) => {
+  fastify.get('/tv-series/popular', async (request, reply) => {
     try {
       const { page } = request.query as { page?: number };
       const results = await traktService.getPopularTvShows(page);

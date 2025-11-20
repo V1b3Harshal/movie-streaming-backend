@@ -72,8 +72,8 @@ export const getAppConfig = (): AppConfig => {
       },
     },
     rateLimit: {
-      windowMs: parseInt(env.RATE_LIMIT_WINDOW_MS || '60000'),
-      maxRequests: parseInt(env.RATE_LIMIT_MAX_REQUESTS || '100'),
+      windowMs: Math.max(1000, Math.min(parseInt(env.RATE_LIMIT_WINDOW_MS || '60000'), 86400000)),
+      maxRequests: Math.max(1, Math.min(parseInt(env.RATE_LIMIT_MAX_REQUESTS || '100'), 10000)),
     },
     swagger: {
       title: env.SWAGGER_TITLE || 'Movie Streaming Backend API',
