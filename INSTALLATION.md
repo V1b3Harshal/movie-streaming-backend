@@ -47,20 +47,29 @@ npm start
 Required variables:
 
 - `JWT_SECRET`: Your JWT secret key (minimum 32 characters)
-- `MONGODB_URI`: MongoDB connection string
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_ANON_KEY`: Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key
 - `TMDB_API_KEY`: The Movie Database API key
 - `TRAKT_CLIENT_ID`: Trakt.tv client ID
 - `PROVIDERS_BACKEND_URL`: URL to your providers backend
 - `INTERNAL_API_KEY`: Internal API key for backend communication
 
+Core services (Free tier):
+
+- `UPSTASH_REDIS_REST_URL`: Upstash Redis URL
+- `UPSTASH_REDIS_REST_TOKEN`: Upstash Redis token
+- `SENTRY_DSN`: Sentry error tracking DSN
+- `POSTHOG_API_KEY`: PostHog analytics API key
+- `BETTER_UPTIME_HEARTBEAT_URL`: Better Uptime monitoring URL
+
 Optional variables:
 
-- `REDIS_URL`: Redis connection string (for traditional Redis)
-- `UPSTASH_REDIS_URL`: Upstash Redis URL
-- `UPSTASH_REDIS_TOKEN`: Upstash Redis token
 - `NODE_ENV`: Environment (development/production)
 - `PORT`: Server port (default: 3000)
 - `FRONTEND_URL`: Frontend URL for CORS
+- `FIREBASE_PROJECT_ID`: Firebase project ID (for push notifications)
+- `CLOUDFLARE_API_TOKEN`: Cloudflare API token
 
 ## Troubleshooting
 
@@ -77,11 +86,11 @@ If you see Redis connection errors:
 
 3. Ensure your network allows connections to Upstash endpoints
 
-### MongoDB Connection Issues
+### Supabase Connection Issues
 
-- Ensure MongoDB is running
-- Check your MONGODB_URI format
-- For production, ensure SSL/TLS is enabled
+- Ensure your Supabase project is active
+- Check your SUPABASE_URL and keys format
+- For production, ensure Row Level Security is configured
 
 ### TypeScript Errors
 
