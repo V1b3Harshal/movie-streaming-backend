@@ -32,7 +32,7 @@
     "@fastify/swagger": "^9.5.2",
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/websocket": "^10.0.1",
-    "@sentry/node": "^10.23.0",
+    "@sentry/node": "^10.27.0",
     "@sentry/tracing": "^7.120.4",
     "@supabase/supabase-js": "^2.80.0",
     "algoliasearch": "^4.20.0",
